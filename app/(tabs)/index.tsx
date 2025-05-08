@@ -1,12 +1,34 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet } from 'react-native';
 
-import { HelloWave } from '@/components/HelloWave';
+import { LeagueCard } from '@/components/LeagueCard';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { League, useLeagues } from '@/services/lolEsportsClient';
 
 export default function HomeScreen() {
+  const { leagues, loading, error } = useLeagues();
+  const colorScheme = useColorScheme() ?? 'light';
+
+  // Get only the top 5 leagues (already sorted by the hook)
+  const topLeagues = leagues.slice(0, 5); 
+
+  const handleLeaguePress = (league: League) => {
+    console.log(`League selected: ${league.name} (${league.id})`);
+    // Future enhancement: Navigate to league details
+  };
+
+  const renderLeague = ({ item }: { item: League }) => (
+    <LeagueCard
+      league={item}
+      onPress={handleLeaguePress}
+      compact={true}
+    />
+  );
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -17,40 +39,35 @@ export default function HomeScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
+        <ThemedText type="title">LoL Esports</ThemedText>
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
+      
+      <ThemedText>Top LoL Esports Leagues</ThemedText>
+      
+      {loading ? (
+        <ActivityIndicator 
+          size="large" 
+          color={Colors[colorScheme].tint} 
+          style={styles.loader} 
+        />
+      ) : error ? (
+        <ThemedView style={styles.errorContainer}>
+          <ThemedText style={styles.errorText}>{error.message}</ThemedText>
+        </ThemedView>
+      ) : (
+        <>
+          <FlatList
+            data={topLeagues}
+            renderItem={renderLeague}
+            keyExtractor={item => item.id}
+            scrollEnabled={false} // Disable scrolling since we're in a ParallaxScrollView
+          />
+          
+          <ThemedText style={styles.viewAllText}>
+            View all leagues in the Leagues tab
+          </ThemedText>
+        </>
+      )}
     </ParallaxScrollView>
   );
 }
@@ -61,15 +78,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
   reactLogo: {
     height: 178,
     width: 290,
     bottom: 0,
     left: 0,
     position: 'absolute',
+  },
+  loader: {
+    padding: 20,
+  },
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  errorText: {
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  viewAllText: {
+    textAlign: 'center',
+    marginTop: 16,
+    fontStyle: 'italic',
   },
 });
