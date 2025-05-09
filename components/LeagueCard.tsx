@@ -10,15 +10,20 @@ interface LeagueCardProps {
   league: League;
   onPress?: (league: League) => void;
   compact?: boolean;
+  navigateToSchedule?: boolean;
 }
 
-export function LeagueCard({ league, onPress, compact = false }: LeagueCardProps) {
+export function LeagueCard({ league, onPress, compact = false, navigateToSchedule = true }: LeagueCardProps) {
   const handlePress = () => {
     if (onPress) {
       onPress(league);
     } else {
-      // Default navigation to teams screen if no custom onPress is provided
-      router.push(`/(league)/${league.id}/teams` as any);
+      // Default navigation based on the navigateToSchedule flag
+      if (navigateToSchedule) {
+        router.push(`/(league)/${league.id}/schedule` as any);
+      } else {
+        router.push(`/(league)/${league.id}/teams` as any);
+      }
     }
   };
 

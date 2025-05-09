@@ -10,12 +10,17 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { Player, useTeamDetails } from '@/services/lolEsportsClient';
 
 export default function TeamDetailsScreen() {
-  const { teamId } = useLocalSearchParams();
+  // Extract both the leagueId (id) and teamId from URL parameters
+  const { id, teamId } = useLocalSearchParams();
   const { team, loading, error } = useTeamDetails(teamId as string);
   const colorScheme = useColorScheme() ?? 'light';
 
   const renderPlayer = ({ item }: { item: Player }) => (
-    <PlayerCard player={item} />
+    <PlayerCard 
+      player={item} 
+      leagueId={id as string}
+      teamId={teamId as string}
+    />
   );
 
   // Group players by role

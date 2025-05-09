@@ -232,6 +232,35 @@ class LolEsportsClient {
       throw error;
     }
   }
+
+  async getSchedule(options?: { leagueId?: string; pageToken?: string }): Promise<any> {
+    try {
+      let url = `${this.baseUrl}/getSchedule?hl=en-US`;
+      
+      if (options?.leagueId) {
+        url += `&leagueId=${options.leagueId}`;
+      }
+      
+      if (options?.pageToken) {
+        url += `&pageToken=${options.pageToken}`;
+      }
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.headers,
+      });
+  
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+  
+      const data = await response.json();
+      return data.data.schedule || { events: [] };
+    } catch (error) {
+      console.error('Error fetching schedule:', error);
+      throw error;
+    }
+  }
 }
 
 // Create and export a singleton instance
@@ -402,6 +431,8 @@ export function useTournaments(leagueId?: string) {
   return { tournaments, loading, error };
 }
 
+
+
 export function useNews(options?: { leagueId?: string; tournamentId?: string; limit?: number }) {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -425,4 +456,37 @@ export function useNews(options?: { leagueId?: string; tournamentId?: string; li
   }, [options?.leagueId, options?.tournamentId, options?.limit]);
 
   return { news, loading, error };
+}
+
+export function useLeagueSchedule(leagueId: string, pageToken?: string) {
+  const [schedule, setSchedule] = useState<any>({ events: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [pagination, setPagination] = useState<{ older?: string; newer?: string }>({});
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const data = await lolEsportsClient.getSchedule({ 
+          leagueId, 
+          pageToken 
+        });
+        
+        setSchedule(data);
+        setPagination(data.pages || {});
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('An unknown error occurred'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (leagueId) {
+      fetchData();
+    }
+  }, [leagueId, pageToken]);
+
+  return { schedule, loading, error, pagination };
 }

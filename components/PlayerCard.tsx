@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { StyleSheet, TouchableOpacity } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
@@ -8,12 +9,19 @@ import { Player } from '@/services/lolEsportsClient';
 interface PlayerCardProps {
   player: Player;
   onPress?: (player: Player) => void;
+  leagueId?: string;
+  teamId?: string;
 }
 
-export function PlayerCard({ player, onPress }: PlayerCardProps) {
-  // Determine if we should render the card as a button
-  const CardComponent = onPress ? TouchableOpacity : ThemedView;
-  const cardProps = onPress ? { onPress: () => onPress(player) } : {};
+export function PlayerCard({ player, onPress, leagueId, teamId }: PlayerCardProps) {
+  const handlePress = () => {
+    if (onPress) {
+      onPress(player);
+    } else if (leagueId && teamId) {
+      // Navigate to player details screen
+      router.push(`/(league)/${leagueId}/player/${player.id}?teamId=${teamId}` as any);
+    }
+  };
   
   // Format the player's full name
   const fullName = [player.firstName, player.lastName]
@@ -21,9 +29,9 @@ export function PlayerCard({ player, onPress }: PlayerCardProps) {
     .join(' ');
 
   return (
-    <CardComponent
+    <TouchableOpacity
       style={styles.playerItem}
-      {...cardProps}>
+      onPress={handlePress}>
       <ThemedView 
         style={styles.playerCard}
         lightColor="#f0f0f0"
@@ -49,7 +57,7 @@ export function PlayerCard({ player, onPress }: PlayerCardProps) {
           )}
         </ThemedView>
       </ThemedView>
-    </CardComponent>
+    </TouchableOpacity>
   );
 }
 

@@ -1,6 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet } from 'react-native';
 
+import { LeagueTabs } from '@/components/LeagueTabs';
 import { TeamCard } from '@/components/TeamCard';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -20,7 +21,7 @@ export default function TeamsScreen() {
 
   const handleTeamPress = (team: Team) => {
     router.push(`/(league)/${leagueId}/team/${team.id}` as any);
-};
+  };
 
   const renderTeam = ({ item }: { item: Team }) => (
     <TeamCard 
@@ -32,9 +33,11 @@ export default function TeamsScreen() {
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.header}>
-        <ThemedText type="title">{league?.name || 'League'} Teams</ThemedText>
+        <ThemedText type="title">{league?.name || 'League'}</ThemedText>
         {league?.region && <ThemedText>{league.region}</ThemedText>}
       </ThemedView>
+
+      <LeagueTabs leagueId={leagueId as string} activeTab="teams" />
 
       {loading ? (
         <ActivityIndicator

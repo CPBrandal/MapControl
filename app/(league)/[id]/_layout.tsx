@@ -8,6 +8,12 @@ export default function LeagueLayout() {
   return (
     <Stack>
       <Stack.Screen 
+        name="schedule" 
+        options={{ 
+          headerShown: false,
+        }} 
+      />
+      <Stack.Screen 
         name="teams" 
         options={{ 
           headerShown: false,
@@ -18,6 +24,14 @@ export default function LeagueLayout() {
         options={{ 
           headerShown: true,
           headerTitle: 'Team Details',
+          presentation: 'modal',
+        }} 
+      />
+      <Stack.Screen 
+        name="player/[playerId]" 
+        options={{ 
+          headerShown: true,
+          headerTitle: 'Player Details',
           presentation: 'modal',
         }} 
       />
