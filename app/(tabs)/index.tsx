@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet } from 'react-native';
 
 import { LeagueCard } from '@/components/LeagueCard';
@@ -17,8 +18,7 @@ export default function HomeScreen() {
   const topLeagues = leagues.slice(0, 5); 
 
   const handleLeaguePress = (league: League) => {
-    console.log(`League selected: ${league.name} (${league.id})`);
-    // Future enhancement: Navigate to league details
+    router.push(`/(league)/${league.id}/teams` as any);
   };
 
   const renderLeague = ({ item }: { item: League }) => (

@@ -1,32 +1,39 @@
-import { router } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet } from 'react-native';
 
-import { LeagueCard } from '@/components/LeagueCard';
+import { TeamCard } from '@/components/TeamCard';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { League, useLeagues } from '@/services/lolEsportsClient';
+import { Team, useLeagueDetails, useTeamsByLeague } from '@/services/lolEsportsClient';
+import { router } from 'expo-router';
 
-export default function LeaguesScreen() {
-  const { leagues, loading, error } = useLeagues();
+export default function TeamsScreen() {
+  const { id: leagueId } = useLocalSearchParams();
+  const { teams, loading: teamsLoading, error: teamsError } = useTeamsByLeague(leagueId as string);
+  const { league, loading: leagueLoading, error: leagueError } = useLeagueDetails(leagueId as string);
   const colorScheme = useColorScheme() ?? 'light';
+  
+  const loading = teamsLoading || leagueLoading;
+  const error = teamsError || leagueError;
 
-  const handleLeaguePress = (league: League) => {
-    router.push(`/(league)/${league.id}/teams` as any);
-  };
+  const handleTeamPress = (team: Team) => {
+    router.push(`/(league)/${leagueId}/team/${team.id}` as any);
+};
 
-  const renderLeague = ({ item }: { item: League }) => (
-    <LeagueCard 
-      league={item} 
-      onPress={handleLeaguePress}
+  const renderTeam = ({ item }: { item: Team }) => (
+    <TeamCard 
+      team={item} 
+      onPress={handleTeamPress}
     />
   );
 
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.header}>
-        <ThemedText type="title">LoL Esports Leagues</ThemedText>
+        <ThemedText type="title">{league?.name || 'League'} Teams</ThemedText>
+        {league?.region && <ThemedText>{league.region}</ThemedText>}
       </ThemedView>
 
       {loading ? (
@@ -39,10 +46,14 @@ export default function LeaguesScreen() {
         <ThemedView style={styles.errorContainer}>
           <ThemedText style={styles.errorText}>{error.message}</ThemedText>
         </ThemedView>
+      ) : teams.length === 0 ? (
+        <ThemedView style={styles.emptyContainer}>
+          <ThemedText>No teams found for this league</ThemedText>
+        </ThemedView>
       ) : (
         <FlatList
-          data={leagues}
-          renderItem={renderLeague}
+          data={teams}
+          renderItem={renderTeam}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContent}
         />
@@ -78,5 +89,11 @@ const styles = StyleSheet.create({
   errorText: {
     marginBottom: 16,
     textAlign: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
 });

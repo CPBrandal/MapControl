@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { StyleSheet, TouchableOpacity } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
@@ -7,15 +8,24 @@ import { League } from '@/services/lolEsportsClient';
 
 interface LeagueCardProps {
   league: League;
-  onPress: (league: League) => void;
+  onPress?: (league: League) => void;
   compact?: boolean;
 }
 
 export function LeagueCard({ league, onPress, compact = false }: LeagueCardProps) {
+  const handlePress = () => {
+    if (onPress) {
+      onPress(league);
+    } else {
+      // Default navigation to teams screen if no custom onPress is provided
+      router.push(`/(league)/${league.id}/teams` as any);
+    }
+  };
+
   return (
     <TouchableOpacity
       style={styles.leagueItem}
-      onPress={() => onPress(league)}>
+      onPress={handlePress}>
       <ThemedView 
         style={styles.leagueCard}
         lightColor="#f0f0f0"
