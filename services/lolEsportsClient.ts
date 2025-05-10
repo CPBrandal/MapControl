@@ -223,6 +223,47 @@ export interface WindowStatsResponse {
     };
   }[];
 }
+
+export interface StandingsData {
+  stages: {
+    id: string;
+    name: string;
+    type: string | null;
+    slug: string;
+    sections: {
+      name: string;
+      matches: {
+        id: string;
+        state: string;
+        teams: {
+          id: string;
+          slug: string;
+          name: string;
+          code: string;
+          image: string;
+          result: {
+            outcome: string | null;
+            gameWins: number;
+          };
+        }[];
+      }[];
+      rankings: {
+        ordinal: number;
+        teams: {
+          id: string;
+          slug: string;
+          name: string;
+          code: string;
+          image: string;
+          record: {
+            wins: number;
+            losses: number;
+          };
+        }[];
+      }[];
+    }[];
+  }[];
+}
 // A direct Riot Games eSports API client that works in React Native
 class LolEsportsClient {
   private baseUrl = 'https://esports-api.lolesports.com/persisted/gw';
@@ -341,17 +382,32 @@ class LolEsportsClient {
   // Fetch tournaments for a specific league
   async getTournamentsForLeague(leagueId: string): Promise<Tournament[]> {
     try {
+      console.log(`Fetching tournaments for league ${leagueId}`);
       const response = await fetch(`${this.baseUrl}/getTournamentsForLeague?hl=en-US&leagueId=${leagueId}`, {
         method: 'GET',
         headers: this.headers,
       });
-
+  
       if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
+        const errorText = await response.text();
+        console.error(`API error for getTournamentsForLeague: ${errorText}`);
+        throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
       }
-
+  
       const data = await response.json();
-      return data.data.tournaments || [];
+      
+      // Log the first part of the response to see its structure
+      console.log('Tournament response preview:', 
+        JSON.stringify(data).substring(0, 200) + '...');
+      
+      // FIXED: The correct path is data.leagues[0].tournaments, not data.tournaments
+      const tournaments = data.data.leagues && data.data.leagues.length > 0 
+        ? (data.data.leagues[0].tournaments || [])
+        : [];
+        
+      console.log(`Found ${tournaments.length} tournaments`);
+      
+      return tournaments;
     } catch (error) {
       console.error(`Error fetching tournaments for league ${leagueId}:`, error);
       throw error;
@@ -518,6 +574,127 @@ async getLiveMatchWindowStats(gameId: string, startingTime?: string): Promise<Wi
     } else {
       console.error('Error type: Unknown error');
     }
+    throw error;
+  }
+}
+
+async getTeamSchedule(teamId: string): Promise<{ events: LiveEvent[] }> {
+  try {
+    // First, get the team details to find its league
+    const team = await this.getTeamById(teamId);
+    
+    if (!team) {
+      throw new Error(`Team with ID ${teamId} not found`);
+    }
+    
+    // Get the league ID if the team has a home league
+    let leagueId = '';
+    if (team.homeLeague?.name) {
+      // Find the league ID by name
+      const leagues = await this.getLeagues();
+      const teamLeague = leagues.find(league => league.name === team.homeLeague?.name);
+      if (teamLeague) {
+        leagueId = teamLeague.id;
+      }
+    }
+    
+    // Get the schedule for the team's league (if we found it)
+    // Otherwise, get the general schedule
+    const schedule = leagueId ? 
+      await this.getSchedule({ leagueId }) : 
+      await this.getSchedule();
+    
+    if (!schedule || !schedule.events) {
+      return { events: [] };
+    }
+    
+    // Filter matches for this team
+    const teamMatches = schedule.events.filter((event: LiveEvent) => {
+      if (!event.match || !event.match.teams) return false;
+      
+      return event.match.teams.some((matchTeam: Team) =>
+        matchTeam.id === team.id || matchTeam.code === team.code
+      );
+    });
+    
+    return { events: teamMatches };
+  } catch (error) {
+    console.error(`Error fetching schedule for team ${teamId}:`, error);
+    throw error;
+  }
+}
+
+async getStandings(tournamentId: string): Promise<StandingsData> {
+  try {
+    const response = await fetch(`${this.baseUrl}/getStandings?hl=en-US&tournamentId=${tournamentId}`, {
+      method: 'GET',
+      headers: this.headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // Log the response to debug
+    console.log('Standings API response:', JSON.stringify(data).substring(0, 500) + '...');
+    
+    // The correct path is data.data.standings[0], as seen in your sample response
+    if (data?.data?.standings && data.data.standings.length > 0) {
+      return data.data.standings[0];
+    }
+    
+    return { stages: [] };
+  } catch (error) {
+    console.error(`Error fetching standings for tournament ${tournamentId}:`, error);
+    throw error;
+  }
+}
+
+// Add this method to get most recent tournament and its standings
+async getLatestTournamentStandings(leagueId: string): Promise<{tournament: Tournament | null, standings: StandingsData | null}> {
+  try {
+    // Get all tournaments for the league
+    const tournaments = await this.getTournamentsForLeague(leagueId);
+    
+    console.log(`Found ${tournaments.length} tournaments for league ${leagueId}`);
+    
+    if (!tournaments || tournaments.length === 0) {
+      return { tournament: null, standings: null };
+    }
+    
+    // Sort tournaments by startDate (most recent first)
+    const sortedTournaments = [...tournaments].sort((a, b) => 
+      new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    );
+    
+    // Get the most recent tournament
+    const latestTournament = sortedTournaments[0];
+    console.log('Latest tournament:', JSON.stringify(latestTournament));
+    
+    if (!latestTournament || !latestTournament.id) {
+      return { tournament: null, standings: null };
+    }
+    
+    // Get standings for this tournament
+    const standings = await this.getStandings(latestTournament.id);
+    
+    // If we received valid standings data
+    if (standings && standings.stages && standings.stages.length > 0) {
+      return {
+        tournament: latestTournament,
+        standings
+      };
+    } else {
+      console.log(`No valid standings data found for tournament ${latestTournament.id}`);
+      return { 
+        tournament: latestTournament, 
+        standings: null 
+      };
+    }
+  } catch (error) {
+    console.error(`Error fetching latest tournament standings for league ${leagueId}:`, error);
     throw error;
   }
 }
@@ -825,4 +1002,62 @@ export function useLiveMatchStats(gameId: string) {
   }, [gameId]);
 
   return { stats, loading, error };
+}
+
+export function useTeamSchedule(teamId: string) {
+  const [schedule, setSchedule] = useState<{ events: LiveEvent[] }>({ events: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const data = await lolEsportsClient.getTeamSchedule(teamId);
+        
+        setSchedule(data);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('An unknown error occurred'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (teamId) {
+      fetchData();
+    }
+  }, [teamId]);
+
+  return { schedule, loading, error };
+}
+
+export function useLeagueStandings(leagueId: string) {
+  const [data, setData] = useState<{ tournament: Tournament | null, standings: StandingsData | null }>({
+    tournament: null,
+    standings: null
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const result = await lolEsportsClient.getLatestTournamentStandings(leagueId);
+        setData(result);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('An unknown error occurred'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (leagueId) {
+      fetchData();
+    }
+  }, [leagueId]);
+
+  return { ...data, loading, error };
 }

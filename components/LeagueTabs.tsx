@@ -8,13 +8,13 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 
 interface LeagueTabsProps {
   leagueId: string;
-  activeTab: 'schedule' | 'teams';
+  activeTab: 'schedule' | 'teams' | 'standings';  // Added 'standings'
 }
 
 export function LeagueTabs({ leagueId, activeTab }: LeagueTabsProps) {
   const colorScheme = useColorScheme() ?? 'light';
   
-  const handleTabPress = (tab: 'schedule' | 'teams') => {
+  const handleTabPress = (tab: 'schedule' | 'teams' | 'standings') => {  // Added 'standings'
     if (tab !== activeTab) {
       router.replace(`/(league)/${leagueId}/${tab}` as any);
     }
@@ -67,10 +67,35 @@ export function LeagueTabs({ leagueId, activeTab }: LeagueTabsProps) {
           Teams
         </ThemedText>
       </TouchableOpacity>
+      
+      {/* New Standings Tab */}
+      <TouchableOpacity
+        style={[
+          styles.tab,
+          activeTab === 'standings' && { 
+            borderBottomColor: Colors[colorScheme].tint,
+            borderBottomWidth: 2,
+          }
+        ]}
+        onPress={() => handleTabPress('standings')}
+      >
+        <ThemedText 
+          style={[
+            styles.tabText, 
+            activeTab === 'standings' && { 
+              color: Colors[colorScheme].tint,
+              fontWeight: 'bold',
+            }
+          ]}
+        >
+          Standings
+        </ThemedText>
+      </TouchableOpacity>
     </ThemedView>
   );
 }
 
+// Styles remain the same
 const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',

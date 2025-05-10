@@ -26,7 +26,7 @@ export default function LeagueScheduleScreen() {
   }, {}) || {};
 
   const sortedDates = Object.keys(groupedMatches).sort((a, b) => 
-    new Date(a).getTime() - new Date(b).getTime()
+    new Date(b).getTime() - new Date(a).getTime()
   );
 
   const handleMatchPress = (matchId: string) => {

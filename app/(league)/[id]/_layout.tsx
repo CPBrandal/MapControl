@@ -20,6 +20,12 @@ export default function LeagueLayout() {
         }} 
       />
       <Stack.Screen 
+        name="standings" 
+        options={{ 
+          headerShown: false,
+        }} 
+      />
+      <Stack.Screen 
         name="team/[teamId]" 
         options={{ 
           headerShown: true,
