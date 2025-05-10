@@ -1,8 +1,10 @@
 import { Image } from 'expo-image';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { GestureResponderEvent, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import { useFavorites } from '@/contexts/FavoritesContext';
 import { Team } from '@/services/lolEsportsClient';
 
 interface TeamCardProps {
@@ -12,6 +14,15 @@ interface TeamCardProps {
 }
 
 export function TeamCard({ team, onPress, compact = false }: TeamCardProps) {
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const favorite = isFavorite(team.id);
+
+  const handleToggleFavorite = (event: GestureResponderEvent) => {
+    // Prevent the card press event from triggering
+    event.stopPropagation();
+    toggleFavorite(team);
+  };
+
   return (
     <TouchableOpacity
       style={styles.teamItem}
@@ -47,6 +58,39 @@ export function TeamCard({ team, onPress, compact = false }: TeamCardProps) {
             Players: {team.players?.length || 0}
           </ThemedText>
         </ThemedView>
+        
+        {/* Favorite Star Button */}
+        <TouchableOpacity
+          style={styles.favoriteButton}
+          onPress={handleToggleFavorite}
+        >
+          {favorite ? (
+            // Filled star
+            <IconSymbol 
+              name="star.fill" 
+              size={24} 
+              color="white" 
+            />
+          ) : (
+            // Two-layered approach for an outlined star effect
+            <ThemedView style={styles.starContainer}>
+              {/* White background (slightly larger) */}
+              <IconSymbol 
+                name="star.fill" 
+                size={26} 
+                color="white" 
+                style={styles.starBackground}
+              />
+              {/* Colored icon on top (slightly smaller) */}
+              <IconSymbol 
+                name="star.fill" 
+                size={22} 
+                color="#2a2a2a"  // Use the dark background color for the inner star
+                style={styles.starForeground}
+              />
+            </ThemedView>
+          )}
+        </TouchableOpacity>
       </ThemedView>
     </TouchableOpacity>
   );
@@ -84,5 +128,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     opacity: 0.7,
+  },
+  favoriteButton: {
+    padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  starContainer: {
+    position: 'relative',
+    width: 26,
+    height: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  starBackground: {
+    position: 'absolute',
+  },
+  starForeground: {
+    position: 'absolute',
   },
 });

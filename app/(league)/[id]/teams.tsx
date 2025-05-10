@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet } from 'react-native';
 
 import { LeagueTabs } from '@/components/LeagueTabs';
@@ -8,7 +8,6 @@ import { ThemedView } from '@/components/ThemedView';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Team, useLeagueDetails, useTeamsByLeague } from '@/services/lolEsportsClient';
-import { router } from 'expo-router';
 
 export default function TeamsScreen() {
   const { id: leagueId } = useLocalSearchParams();

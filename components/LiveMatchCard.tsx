@@ -28,6 +28,19 @@ export function LiveMatchCard({ match }: LiveMatchCardProps) {
   const team1Score = teams?.[0]?.result?.gameWins || 0;
   const team2Score = teams?.[1]?.result?.gameWins || 0;
   
+  // Format the start time for in-progress matches
+  const formatStartTime = () => {
+    if (match.state === 'inProgress' && match.startTime) {
+      const startTime = new Date(match.startTime);
+      const hours = startTime.getUTCHours();
+      const minutes = startTime.getUTCMinutes();
+      const formattedHours = hours < 10 ? `0${hours}` : hours;
+      const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
+      return `Starting ${formattedHours}:${formattedMinutes} UTC`;
+    }
+    return '';
+  };
+
   // Find the current game that's in progress
   const getCurrentGameId = () => {
     if (!match.match.games) {
@@ -120,6 +133,15 @@ export function LiveMatchCard({ match }: LiveMatchCardProps) {
             <ThemedText style={styles.liveText}>LIVE</ThemedText>
           </ThemedView>
         </ThemedView>
+        
+        {/* Start time for in-progress matches */}
+        {match.state === 'inProgress' && (
+          <ThemedView style={styles.startTimeContainer}>
+            <ThemedText style={styles.startTimeText}>
+              {formatStartTime()}
+            </ThemedText>
+          </ThemedView>
+        )}
         
         {/* Teams */}
         <ThemedView style={styles.matchInfo}>
@@ -231,6 +253,17 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 12,
+  },
+  startTimeContainer: {
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    padding: 8,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  startTimeText: {
+    fontSize: 12,
+    fontStyle: 'italic',
   },
   matchInfo: {
     padding: 16,

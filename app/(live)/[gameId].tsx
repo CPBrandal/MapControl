@@ -161,12 +161,12 @@ export default function LiveMatchDetailsScreen() {
                   </ThemedView>
                   
                   <ThemedView style={styles.healthBar}>
-                    <ThemedView 
-                      style={[
-                        styles.healthBarInner,
-                        { width: `${(player.currentHealth / player.maxHealth) * 100}%` }
-                      ]}
-                    />
+                     <ThemedView 
+                        style={[
+                            styles.healthBarInner,
+                            { width: ((player.currentHealth / player.maxHealth) * 100 + '%') as any }
+                        ]}
+                        /> 
                     <ThemedText style={styles.healthText}>
                       {player.currentHealth}/{player.maxHealth}
                     </ThemedText>
@@ -209,7 +209,7 @@ export default function LiveMatchDetailsScreen() {
                   getGoldDifference() > 0 
                     ? styles.blueAdvantage 
                     : getGoldDifference() < 0 
-                      ? styles.redAdvantage 
+                      ? styles.redAdvantage
                       : styles.evenMatch
                 ]}
               >
@@ -223,8 +223,8 @@ export default function LiveMatchDetailsScreen() {
           </ThemedView>
           
           <ThemedView style={styles.matchStatsContainer}>
-            {renderTeamStats(true)} {/* Blue team */}
-            {renderTeamStats(false)} {/* Red team */}
+            {renderTeamStats(true)}
+            {renderTeamStats(false)}
           </ThemedView>
         </ScrollView>
       ) : (
