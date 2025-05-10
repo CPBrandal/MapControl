@@ -46,6 +46,14 @@ export interface Team {
     name: string;
     region: string;
   };
+  result?: {
+    outcome: string | null;
+    gameWins: number;
+  };
+  record?: {
+    wins: number;
+    losses: number;
+  };
   players: Player[];
 }
 
@@ -61,6 +69,160 @@ export interface NewsItem {
   url?: string;
 }
 
+export interface LiveEvent {
+  id: string;
+  startTime: string;
+  state: 'inProgress' | 'completed' | 'unstarted';
+  blockName: string;
+  league: League;
+  match: {
+    id: string;
+    teams: Team[];
+    strategy: {
+      type: string;
+      count: number;
+    };
+    games: {
+      number: number;
+      id: string;
+      state: 'completed' | 'inProgress' | 'unstarted';
+      teams: {
+        id: string;
+        side: 'blue' | 'red';
+      }[];
+    }[];
+  };
+  streams: {
+    parameter: string;
+    locale: string;
+    provider: string;
+    countries: string[];
+    offset: number;
+  }[];
+}
+
+export interface ParticipantStats {
+  participantId: number;
+  level: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  creepScore: number;
+  totalGold: number;
+  currentHealth: number;
+  maxHealth: number;
+  totalGoldEarned: number;
+  killParticipation: number;
+  championDamageShare: number;
+  wardsPlaced: number;
+  wardsDestroyed: number;
+  attackDamage: number;
+  abilityPower: number;
+  criticalChance: number;
+  attackSpeed: number;
+  lifeSteal: number;
+  armor: number;
+  magicResistance: number;
+  tenacity: number;
+  items: number[];
+  perkMetadata: {
+    styleId: number;
+    subStyleId: number;
+    perks: number[];
+  };
+  abilities: string;
+}
+
+export interface StatsFrame {
+  rfc460Timestamp: string;
+  participants: ParticipantStats[];
+}
+
+export interface LiveStatsResponse {
+  frames: StatsFrame[];
+}
+
+// Add to services/lolEsportsClient.ts
+
+export interface LiveStatsDetailsResponse {
+  frames: StatsFrame[];
+}
+
+export interface StatsFrame {
+  rfc460Timestamp: string;
+  participants: ParticipantStats[];
+}
+
+// Add the window response interface
+export interface WindowStatsResponse {
+  esportsGameId: string;
+  esportsMatchId: string;
+  gameMetadata: {
+    patchVersion: string;
+    blueTeamMetadata: {
+      esportsTeamId: string;
+      participantMetadata: {
+        participantId: number;
+        esportsPlayerId: string;
+        summonerName: string;
+        championId: string;
+        role: string;
+      }[];
+    };
+    redTeamMetadata: {
+      esportsTeamId: string;
+      participantMetadata: {
+        participantId: number;
+        esportsPlayerId: string;
+        summonerName: string;
+        championId: string;
+        role: string;
+      }[];
+    };
+  };
+  frames: {
+    rfc460Timestamp: string;
+    gameState: string;
+    blueTeam: {
+      totalGold: number;
+      inhibitors: number;
+      towers: number;
+      barons: number;
+      totalKills: number;
+      dragons: string[];
+      participants: {
+        participantId: number;
+        totalGold: number;
+        level: number;
+        kills: number;
+        deaths: number;
+        assists: number;
+        creepScore: number;
+        currentHealth: number;
+        maxHealth: number;
+      }[];
+    };
+    redTeam: {
+      totalGold: number;
+      inhibitors: number;
+      towers: number;
+      barons: number;
+      totalKills: number;
+      dragons: string[];
+      participants: {
+        participantId: number;
+        totalGold: number;
+        level: number;
+        kills: number;
+        deaths: number;
+        assists: number;
+        creepScore: number;
+        currentHealth: number;
+        maxHealth: number;
+      }[];
+    };
+  }[];
+}
 // A direct Riot Games eSports API client that works in React Native
 class LolEsportsClient {
   private baseUrl = 'https://esports-api.lolesports.com/persisted/gw';
@@ -261,6 +423,104 @@ class LolEsportsClient {
       throw error;
     }
   }
+
+  async getLiveMatches(): Promise<LiveEvent[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/getLive?hl=en-US`, {
+        method: 'GET',
+        headers: this.headers,
+      });
+  
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+  
+      const data = await response.json();
+      return data.data.schedule.events || [];
+    } catch (error) {
+      console.error('Error fetching live matches:', error);
+      throw error;
+    }
+  }
+
+async getLiveMatchStats(gameId: string): Promise<LiveStatsResponse | WindowStatsResponse> {
+  try {
+    // Use current time as the starting time to get the most recent data
+    const currentTime = new Date().toISOString();
+    
+    // Try the window endpoint first (more comprehensive and useful data)
+    const response = await fetch(`https://feed.lolesports.com/livestats/v1/window/${gameId}?startingTime=${currentTime}`, {
+      method: 'GET',
+      headers: this.headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`Error fetching live stats for game ${gameId}:`, error);
+    throw error;
+  }
+}
+async getLiveMatchWindowStats(gameId: string, startingTime?: string): Promise<WindowStatsResponse | null> {
+  try {
+    // Start with current time
+    const currentTime = new Date();
+    
+    // Subtract 30 seconds to ensure we're outside the restricted window
+    const adjustedTime = new Date(currentTime.getTime() - 30000);
+    
+    // Round down seconds to the nearest multiple of 10
+    adjustedTime.setSeconds(Math.floor(adjustedTime.getSeconds() / 10) * 10);
+    adjustedTime.setMilliseconds(0);
+    
+    const formattedTime = adjustedTime.toISOString();
+    console.log('Making API request with correctly formatted time:', formattedTime);
+    const url = `https://feed.lolesports.com/livestats/v1/window/${gameId}?startingTime=${formattedTime}`;
+    
+    console.log(`Fetching stats for game ${gameId} with URL: ${url}`);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: this.headers,
+    });
+    
+    if (!response.ok) {
+      // Get the raw response text for better debugging
+      const errorText = await response.text();
+      console.error('API error response:', errorText);
+      
+      // Check for specific error conditions
+      if (response.status === 404) {
+        console.log(`Stats not available for game ${gameId}`);
+        return null;
+      }
+      
+      throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
+    }
+    
+    // Check if the response is empty
+    const responseText = await response.text();
+    if (!responseText || responseText.trim() === '') {
+      console.error('Empty response received from API');
+      return null;
+    }
+    
+    // Parse the JSON after confirming we have content
+    return JSON.parse(responseText);
+  } catch (error) {
+    console.error(`Error fetching live window stats for game ${gameId}:`, error);
+    if (error instanceof Error) {
+      console.error('Error type:', error.constructor.name);
+      console.error('Error message:', error.message);
+    } else {
+      console.error('Error type: Unknown error');
+    }
+    throw error;
+  }
+}
 }
 
 // Create and export a singleton instance
@@ -296,6 +556,14 @@ export function useLeagues() {
   }, []);
 
   return { leagues, loading, error };
+}
+
+export function isWindowStatsResponse(response: any): response is WindowStatsResponse {
+  return response && 
+         response.gameMetadata && 
+         response.frames && 
+         response.frames.length > 0 && 
+         response.frames[0].blueTeam !== undefined;
 }
 
 export function useLeagueDetails(leagueId: string) {
@@ -489,4 +757,72 @@ export function useLeagueSchedule(leagueId: string, pageToken?: string) {
   }, [leagueId, pageToken]);
 
   return { schedule, loading, error, pagination };
+}
+
+export function useLiveMatches() {
+  const [liveMatches, setLiveMatches] = useState<LiveEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const data = await lolEsportsClient.getLiveMatches();
+        setLiveMatches(data);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('An unknown error occurred'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+    
+    // Set up a refresh interval for live matches (every 60 seconds)
+    const intervalId = setInterval(fetchData, 60000);
+    
+    // Clean up interval on component unmount
+    return () => clearInterval(intervalId);
+  }, []);
+
+  return { liveMatches, loading, error };
+}
+
+export function useLiveMatchStats(gameId: string) {
+  const [stats, setStats] = useState<LiveStatsDetailsResponse | WindowStatsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        // Get current time
+        const currentTime = new Date().toISOString();
+        
+        // Use the new method from the client instance
+        const data = await lolEsportsClient.getLiveMatchWindowStats(gameId, currentTime);
+        setStats(data);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('An unknown error occurred'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (gameId) {
+      fetchData();
+      
+      // Set up a refresh interval (every 10 seconds)
+      const intervalId = setInterval(fetchData, 10000);
+      
+      // Clean up interval on component unmount
+      return () => clearInterval(intervalId);
+    }
+  }, [gameId]);
+
+  return { stats, loading, error };
 }

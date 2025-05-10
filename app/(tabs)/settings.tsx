@@ -1,15 +1,68 @@
-import { useState } from 'react';
-import { StyleSheet, Switch, TouchableOpacity } from 'react-native';
-
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { router } from 'expo-router';
+import { StyleSheet, TouchableOpacity } from 'react-native';
+
+// Define valid icon names based on the IconSymbol component mapping
+type IconName = 'house.fill' | 'paperplane.fill' | 'chevron.left.forwardslash.chevron.right' | 'chevron.right' | 'star.fill';
+
+interface SettingsItemProps {
+  title: string;
+  icon: IconName; // Use the specific IconName type
+  route: string; // Use string as type
+}
+
+const SettingsItem = ({ title, icon, route }: SettingsItemProps) => {
+  const colorScheme = useColorScheme() ?? 'light';
+  
+  return (
+    <TouchableOpacity
+      style={styles.settingItem}
+      onPress={() => router.push(route as any)} // Use type assertion to bypass type checking
+    >
+      <ThemedView style={styles.settingItemLeft}>
+        <IconSymbol
+          name={icon}
+          size={24}
+          color={Colors[colorScheme].icon}
+        />
+        <ThemedText style={styles.settingTitle}>{title}</ThemedText>
+      </ThemedView>
+      <IconSymbol
+        name="chevron.right"
+        size={20}
+        color={Colors[colorScheme].icon}
+      />
+    </TouchableOpacity>
+  );
+};
 
 export default function SettingsScreen() {
-  const colorScheme = useColorScheme() ?? 'light';
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [matchRemindersEnabled, setMatchRemindersEnabled] = useState(false);
+  const items: SettingsItemProps[] = [
+    {
+      title: 'Profile',
+      icon: 'house.fill',
+      route: '/(settings)/profile'
+    },
+    {
+      title: 'MapControl+',
+      icon: 'star.fill',
+      route: '/(settings)/mapcontrol-plus'
+    },
+    {
+      title: 'Notifications',
+      icon: 'paperplane.fill',
+      route: '/(settings)/notifications'
+    },
+    {
+      title: 'More',
+      icon: 'chevron.right',
+      route: '/(settings)/more'
+    }
+  ];
   
   return (
     <ThemedView style={styles.container}>
@@ -18,47 +71,18 @@ export default function SettingsScreen() {
       </ThemedView>
       
       <ThemedView style={styles.settingsSection}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
-          Notifications
-        </ThemedText>
-        
-        <ThemedView style={styles.settingItem}>
-          <ThemedText>Enable notifications</ThemedText>
-          <Switch
-            value={notificationsEnabled}
-            onValueChange={setNotificationsEnabled}
-            trackColor={{ false: '#767577', true: Colors[colorScheme].tint }}
+        {items.map((item, index) => (
+          <SettingsItem
+            key={index}
+            title={item.title}
+            icon={item.icon}
+            route={item.route}
           />
-        </ThemedView>
-        
-        <ThemedView style={styles.settingItem}>
-          <ThemedText>Match reminders</ThemedText>
-          <Switch
-            value={matchRemindersEnabled}
-            onValueChange={setMatchRemindersEnabled}
-            trackColor={{ false: '#767577', true: Colors[colorScheme].tint }}
-            disabled={!notificationsEnabled}
-          />
-        </ThemedView>
+        ))}
       </ThemedView>
       
-      <ThemedView style={styles.settingsSection}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
-          About
-        </ThemedText>
-        
-        <TouchableOpacity style={styles.settingItem}>
-          <ThemedText>Version</ThemedText>
-          <ThemedText style={styles.settingValue}>1.0.0</ThemedText>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.settingItem}>
-          <ThemedText>Terms of Service</ThemedText>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.settingItem}>
-          <ThemedText>Privacy Policy</ThemedText>
-        </TouchableOpacity>
+      <ThemedView style={styles.versionContainer}>
+        <ThemedText style={styles.versionText}>Version 1.0.0</ThemedText>
       </ThemedView>
     </ThemedView>
   );
@@ -75,20 +99,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   settingsSection: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    marginBottom: 16,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   settingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  settingValue: {
+  settingItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  settingTitle: {
+    fontSize: 16,
+    marginLeft: 16,
+  },
+  versionContainer: {
+    marginTop: 40,
+    alignItems: 'center',
+  },
+  versionText: {
+    fontSize: 14,
     opacity: 0.6,
   },
 });

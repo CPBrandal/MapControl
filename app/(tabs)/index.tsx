@@ -1,17 +1,20 @@
+// app/(tabs)/index.tsx
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet } from 'react-native';
 
 import { LeagueCard } from '@/components/LeagueCard';
+import { LiveMatchCard } from '@/components/LiveMatchCard';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { League, useLeagues } from '@/services/lolEsportsClient';
+import { League, LiveEvent, useLeagues, useLiveMatches } from '@/services/lolEsportsClient';
 
 export default function HomeScreen() {
-  const { leagues, loading, error } = useLeagues();
+  const { leagues, loading: leaguesLoading, error: leaguesError } = useLeagues();
+  const { liveMatches, loading: liveLoading, error: liveError } = useLiveMatches();
   const colorScheme = useColorScheme() ?? 'light';
 
   // Get only the top 5 leagues (already sorted by the hook)
@@ -28,6 +31,10 @@ export default function HomeScreen() {
       compact={true}
     />
   );
+  
+  const renderLiveMatch = ({ item }: { item: LiveEvent }) => (
+    <LiveMatchCard match={item} />
+  );
 
   return (
     <ParallaxScrollView
@@ -42,32 +49,67 @@ export default function HomeScreen() {
         <ThemedText type="title">LoL Esports</ThemedText>
       </ThemedView>
       
-      <ThemedText>Top LoL Esports Leagues</ThemedText>
-      
-      {loading ? (
-        <ActivityIndicator 
-          size="large" 
-          color={Colors[colorScheme].tint} 
-          style={styles.loader} 
-        />
-      ) : error ? (
-        <ThemedView style={styles.errorContainer}>
-          <ThemedText style={styles.errorText}>{error.message}</ThemedText>
+      {/* Live Matches Section */}
+      <ThemedView style={styles.section}>
+        <ThemedView style={styles.sectionHeader}>
+          <ThemedText type="subtitle">Live Matches</ThemedText>
         </ThemedView>
-      ) : (
-        <>
+        
+        {liveLoading ? (
+          <ActivityIndicator 
+            size="large" 
+            color={Colors[colorScheme].tint} 
+            style={styles.loader} 
+          />
+        ) : liveError ? (
+          <ThemedText style={styles.errorText}>
+            Unable to load live matches
+          </ThemedText>
+        ) : liveMatches.length === 0 ? (
+          <ThemedView style={styles.emptyState}>
+            <ThemedText>No matches currently live</ThemedText>
+          </ThemedView>
+        ) : (
           <FlatList
-            data={topLeagues}
-            renderItem={renderLeague}
+            data={liveMatches}
+            renderItem={renderLiveMatch}
             keyExtractor={item => item.id}
             scrollEnabled={false} // Disable scrolling since we're in a ParallaxScrollView
           />
-          
-          <ThemedText style={styles.viewAllText}>
-            View all leagues in the Leagues tab
-          </ThemedText>
-        </>
-      )}
+        )}
+      </ThemedView>
+      
+      {/* Top Leagues Section */}
+      <ThemedView style={styles.section}>
+        <ThemedView style={styles.sectionHeader}>
+          <ThemedText type="subtitle">Top Leagues</ThemedText>
+        </ThemedView>
+        
+        {leaguesLoading ? (
+          <ActivityIndicator 
+            size="large" 
+            color={Colors[colorScheme].tint} 
+            style={styles.loader} 
+          />
+        ) : leaguesError ? (
+          <ThemedView style={styles.errorContainer}>
+            <ThemedText style={styles.errorText}>{leaguesError.message}</ThemedText>
+          </ThemedView>
+        ) : (
+          <>
+            <FlatList
+              data={topLeagues}
+              renderItem={renderLeague}
+              keyExtractor={item => item.id}
+              scrollEnabled={false} // Disable scrolling since we're in a ParallaxScrollView
+            />
+            
+            <ThemedText style={styles.viewAllText}>
+              View all leagues in the Leagues tab
+            </ThemedText>
+          </>
+        )}
+      </ThemedView>
     </ParallaxScrollView>
   );
 }
@@ -77,6 +119,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginBottom: 20,
   },
   reactLogo: {
     height: 178,
@@ -84,6 +127,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     position: 'absolute',
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    marginBottom: 12,
   },
   loader: {
     padding: 20,
@@ -100,5 +149,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     fontStyle: 'italic',
+  },
+  emptyState: {
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
   },
 });
