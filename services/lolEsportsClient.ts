@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // Define types based on the API responses
 export interface League {
@@ -520,12 +520,12 @@ async getLiveMatchStats(gameId: string): Promise<LiveStatsResponse | WindowStats
     throw error;
   }
 }
-async getLiveMatchWindowStats(gameId: string, startingTime?: string): Promise<WindowStatsResponse | null> {
+async getLiveMatchWindowStats(gameId: string): Promise<WindowStatsResponse | null> {
   try {
     // Start with current time
     const currentTime = new Date();
     
-    // Subtract 30 seconds to ensure we're outside the restricted window
+    // Subtract 30 seconds to ensure we're outside the required 20-second window
     const adjustedTime = new Date(currentTime.getTime() - 30000);
     
     // Round down seconds to the nearest multiple of 10
@@ -939,69 +939,150 @@ export function useLeagueSchedule(leagueId: string, pageToken?: string) {
 export function useLiveMatches() {
   const [liveMatches, setLiveMatches] = useState<LiveEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const isInitialFetchRef = useRef(true);
 
   useEffect(() => {
+    let isMounted = true;
+    let intervalId: number;
+
     const fetchData = async () => {
+      if (!isMounted) return;
+      
       try {
-        setLoading(true);
+        // Only set loading to true on initial fetch, otherwise set refreshing
+        if (isInitialFetchRef.current) {
+          setLoading(true);
+        } else {
+          setRefreshing(true);
+        }
+        
         const data = await lolEsportsClient.getLiveMatches();
-        setLiveMatches(data);
-        setError(null);
+        
+        if (isMounted) {
+          setLiveMatches(data);
+          setError(null);
+          // After first successful fetch, set isInitialFetch to false
+          isInitialFetchRef.current = false;
+        }
       } catch (err) {
-        setError(err instanceof Error ? err : new Error('An unknown error occurred'));
+        if (isMounted) {
+          // Only show errors on initial load to avoid disrupting the UI during refreshes
+          if (isInitialFetchRef.current) {
+            setError(err instanceof Error ? err : new Error('An unknown error occurred'));
+          } else {
+            console.error('Error refreshing live matches:', err);
+          }
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     };
 
     fetchData();
     
     // Set up a refresh interval for live matches (every 60 seconds)
-    const intervalId = setInterval(fetchData, 60000);
+    intervalId = setInterval(fetchData, 60000);
     
     // Clean up interval on component unmount
-    return () => clearInterval(intervalId);
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
   }, []);
 
-  return { liveMatches, loading, error };
+  return { liveMatches, loading, refreshing, error };
 }
+
+// Add this to services/lolEsportsClient.ts
 
 export function useLiveMatchStats(gameId: string) {
   const [stats, setStats] = useState<LiveStatsDetailsResponse | WindowStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const isInitialFetchRef = useRef(true);
+  const consecutiveErrorsRef = useRef(0);
 
   useEffect(() => {
+    let isMounted = true;
+    let intervalId: number;
+
     const fetchData = async () => {
+      if (!isMounted) return;
+      
       try {
-        setLoading(true);
-        // Get current time
-        const currentTime = new Date().toISOString();
+        // Only set loading to true on initial fetch, otherwise set refreshing
+        if (isInitialFetchRef.current) {
+          setLoading(true);
+        } else {
+          setRefreshing(true);
+        }
         
-        // Use the new method from the client instance
-        const data = await lolEsportsClient.getLiveMatchWindowStats(gameId, currentTime);
-        setStats(data);
-        setError(null);
+        // Use the method from the client instance
+        const data = await lolEsportsClient.getLiveMatchWindowStats(gameId);
+        
+        if (isMounted) {
+          if (data) {
+            setStats(data);
+            setError(null);
+            // Reset error counter on success
+            consecutiveErrorsRef.current = 0;
+          } else if (isInitialFetchRef.current) {
+            // Only set error on initial fetch if no data
+            setError(new Error("No stats available for this match"));
+          }
+          
+          // After first fetch, set isInitialFetch to false
+          isInitialFetchRef.current = false;
+        }
       } catch (err) {
-        setError(err instanceof Error ? err : new Error('An unknown error occurred'));
+        if (isMounted) {
+          consecutiveErrorsRef.current += 1;
+          
+          // Only update error state if it's the initial fetch or if errors are persistent
+          if (isInitialFetchRef.current || consecutiveErrorsRef.current > 3) {
+            setError(err instanceof Error ? err : new Error('An unknown error occurred'));
+          }
+          
+          console.log(`Fetch attempt failed (${consecutiveErrorsRef.current} consecutive errors)`);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     };
 
     if (gameId) {
       fetchData();
       
-      // Set up a refresh interval (every 10 seconds)
-      const intervalId = setInterval(fetchData, 10000);
+      // Set up a refresh interval - use 15 seconds to be safe with the API limitations
+      intervalId = setInterval(() => {
+        if (consecutiveErrorsRef.current > 5) {
+          // If we've had many consecutive errors, slow down the polling
+          console.log("Too many errors, slowing down polling rate");
+          clearInterval(intervalId);
+          intervalId = setInterval(fetchData, 30000); // Poll every 30s instead
+        } else {
+          fetchData();
+        }
+      }, 10000);
       
       // Clean up interval on component unmount
-      return () => clearInterval(intervalId);
+      return () => {
+        isMounted = false;
+        clearInterval(intervalId);
+      };
     }
   }, [gameId]);
 
-  return { stats, loading, error };
+  return { stats, loading, refreshing, error };
 }
 
 export function useTeamSchedule(teamId: string) {

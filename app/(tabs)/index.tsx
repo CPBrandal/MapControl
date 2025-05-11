@@ -1,4 +1,4 @@
-// app/(tabs)/index.tsx
+// app/(tabs)/index.tsx - update the code that uses the liveMatches
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet } from 'react-native';
@@ -14,7 +14,7 @@ import { League, LiveEvent, useLeagues, useLiveMatches } from '@/services/lolEsp
 
 export default function HomeScreen() {
   const { leagues, loading: leaguesLoading, error: leaguesError } = useLeagues();
-  const { liveMatches, loading: liveLoading, error: liveError } = useLiveMatches();
+  const { liveMatches, loading: liveLoading, refreshing: liveRefreshing, error: liveError } = useLiveMatches();
   const colorScheme = useColorScheme() ?? 'light';
 
   // Get only the top 5 leagues (already sorted by the hook)
@@ -53,6 +53,15 @@ export default function HomeScreen() {
       <ThemedView style={styles.section}>
         <ThemedView style={styles.sectionHeader}>
           <ThemedText type="subtitle">Live Matches</ThemedText>
+          
+          {/* Small refresh indicator */}
+          {liveRefreshing && (
+            <ActivityIndicator
+              size="small"
+              color={Colors[colorScheme].tint}
+              style={styles.refreshIndicator}
+            />
+          )}
         </ThemedView>
         
         {liveLoading ? (
@@ -114,6 +123,7 @@ export default function HomeScreen() {
   );
 }
 
+// Updated styles to include the refreshIndicator
 const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: 'row',
@@ -133,6 +143,11 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  refreshIndicator: {
+    marginLeft: 10,
   },
   loader: {
     padding: 20,

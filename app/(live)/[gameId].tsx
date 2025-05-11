@@ -1,6 +1,7 @@
 // app/(live)/[gameId].tsx
 
 import { useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
@@ -14,8 +15,16 @@ import {
 
 export default function LiveMatchDetailsScreen() {
   const { gameId } = useLocalSearchParams();
-  const { stats, loading, error } = useLiveMatchStats(gameId as string);
+  const { stats, loading, refreshing, error } = useLiveMatchStats(gameId as string);
   const colorScheme = useColorScheme() ?? 'light';
+  const lastUpdateTimeRef = useRef(new Date());
+  
+  // Update lastUpdateTime when stats refresh
+  useEffect(() => {
+    if (stats && !loading) {
+      lastUpdateTimeRef.current = new Date();
+    }
+  }, [stats]);
   
   // Check if we're dealing with window stats response
   if (stats && !isWindowStatsResponse(stats)) {
@@ -166,7 +175,7 @@ export default function LiveMatchDetailsScreen() {
                             styles.healthBarInner,
                             { width: ((player.currentHealth / player.maxHealth) * 100 + '%') as any }
                         ]}
-                        /> 
+                      /> 
                     <ThemedText style={styles.healthText}>
                       {player.currentHealth}/{player.maxHealth}
                     </ThemedText>
@@ -197,9 +206,16 @@ export default function LiveMatchDetailsScreen() {
       ) : stats && isWindowStatsResponse(stats) && latestFrame ? (
         <ScrollView>
           <ThemedView style={styles.headerContainer}>
-            <ThemedText style={styles.matchTime}>
-              Last updated: {new Date(latestFrame.rfc460Timestamp).toLocaleTimeString()}
-            </ThemedText>
+            <ThemedView style={styles.updateContainer}>
+              <ThemedText style={styles.matchTime}>
+                Last updated: {lastUpdateTimeRef.current.toLocaleTimeString()}
+              </ThemedText>
+              {refreshing && (
+                <ThemedView style={styles.refreshIndicator}>
+                  <ActivityIndicator size="small" color={Colors[colorScheme].tint} />
+                </ThemedView>
+              )}
+            </ThemedView>
             
             <ThemedView style={styles.goldDifferenceContainer}>
               <ThemedText style={styles.goldDifferenceLabel}>Gold Difference:</ThemedText>
@@ -262,10 +278,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     marginBottom: 16,
   },
+  updateContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  refreshIndicator: {
+    marginLeft: 8,
+  },
   matchTime: {
     fontSize: 12,
     textAlign: 'center',
-    marginBottom: 8,
   },
   goldDifferenceContainer: {
     flexDirection: 'row',
