@@ -1,6 +1,6 @@
+// app/(tabs)/leagues.tsx
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { ActivityIndicator, SectionList, StyleSheet, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, SectionList, StyleSheet } from 'react-native';
 
 import { LeagueCard } from '@/components/LeagueCard';
 import { ThemedText } from '@/components/ThemedText';
@@ -12,7 +12,6 @@ import { League, useLeagues } from '@/services/lolEsportsClient';
 export default function LeaguesScreen() {
   const { leagues, loading, error } = useLeagues();
   const colorScheme = useColorScheme() ?? 'light';
-  const [viewMode, setViewMode] = useState<'grouped' | 'flat'>('grouped');
 
   const handleLeaguePress = (league: League) => {
     router.push(`/(league)/${league.id}/teams` as any);
@@ -52,25 +51,10 @@ export default function LeaguesScreen() {
     />
   );
 
-  const toggleViewMode = () => {
-    setViewMode(prev => prev === 'grouped' ? 'flat' : 'grouped');
-  };
-
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.header}>
         <ThemedText type="title">LoL Esports Leagues</ThemedText>
-      </ThemedView>
-
-      <ThemedView style={styles.viewToggle}>
-        <TouchableOpacity 
-          style={styles.toggleButton} 
-          onPress={toggleViewMode}
-        >
-          <ThemedText style={styles.toggleText}>
-            {viewMode === 'grouped' ? 'Switch to Flat View' : 'Group by Region'}
-          </ThemedText>
-        </TouchableOpacity>
       </ThemedView>
 
       {loading ? (
@@ -83,7 +67,7 @@ export default function LeaguesScreen() {
         <ThemedView style={styles.errorContainer}>
           <ThemedText style={styles.errorText}>{error.message}</ThemedText>
         </ThemedView>
-      ) : viewMode === 'grouped' ? (
+      ) : (
         <SectionList
           sections={sections}
           keyExtractor={(item) => item.id}
@@ -99,13 +83,6 @@ export default function LeaguesScreen() {
           )}
           contentContainerStyle={styles.listContent}
           stickySectionHeadersEnabled={true}
-        />
-      ) : (
-        <SectionList
-          sections={[{ title: 'All Leagues', data: leagues }]}
-          keyExtractor={(item) => item.id}
-          renderItem={renderLeague}
-          contentContainerStyle={styles.listContent}
         />
       )}
     </ThemedView>
@@ -148,19 +125,5 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontWeight: 'bold',
     fontSize: 18,
-  },
-  viewToggle: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  toggleButton: {
-    backgroundColor: '#0a7ea4',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  toggleText: {
-    color: 'white',
-    fontWeight: 'bold',
   },
 });

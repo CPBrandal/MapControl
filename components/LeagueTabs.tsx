@@ -1,3 +1,4 @@
+// components/LeagueTabs.tsx
 import { router } from 'expo-router';
 import { StyleSheet, TouchableOpacity } from 'react-native';
 
@@ -8,15 +9,21 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 
 interface LeagueTabsProps {
   leagueId: string;
-  activeTab: 'schedule' | 'teams' | 'standings';  // Added 'standings'
+  activeTab: 'schedule' | 'teams' | 'standings';
 }
 
+// This component is kept for backward compatibility
+// But now it just navigates to the main view with the appropriate tab param
 export function LeagueTabs({ leagueId, activeTab }: LeagueTabsProps) {
   const colorScheme = useColorScheme() ?? 'light';
   
-  const handleTabPress = (tab: 'schedule' | 'teams' | 'standings') => {  // Added 'standings'
+  const handleTabPress = (tab: 'schedule' | 'teams' | 'standings') => {
     if (tab !== activeTab) {
-      router.replace(`/(league)/${leagueId}/${tab}` as any);
+      // Navigate to the main index screen with the tab parameter
+      router.push({
+        pathname: `/(league)/${leagueId}`,
+        params: { tab }
+      });
     }
   };
   
@@ -68,7 +75,6 @@ export function LeagueTabs({ leagueId, activeTab }: LeagueTabsProps) {
         </ThemedText>
       </TouchableOpacity>
       
-      {/* New Standings Tab */}
       <TouchableOpacity
         style={[
           styles.tab,
@@ -95,17 +101,18 @@ export function LeagueTabs({ leagueId, activeTab }: LeagueTabsProps) {
   );
 }
 
-// Styles remain the same
 const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     marginBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+    height: 45,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 12,
   },
   tabText: {

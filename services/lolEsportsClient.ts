@@ -664,32 +664,63 @@ async getLatestTournamentStandings(leagueId: string): Promise<{tournament: Tourn
       return { tournament: null, standings: null };
     }
     
-    // Sort tournaments by startDate (most recent first)
-    const sortedTournaments = [...tournaments].sort((a, b) => 
-      new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    // Get the current date
+    const currentDate = new Date();
+    console.log(`Current date: ${currentDate.toISOString()}`);
+    
+    // Filter tournaments that have already started (start date is before or equal to current date)
+    const activeOrPastTournaments = tournaments.filter(tournament => 
+      new Date(tournament.startDate) <= currentDate
     );
     
-    // Get the most recent tournament
-    const latestTournament = sortedTournaments[0];
-    console.log('Latest tournament:', JSON.stringify(latestTournament));
+    console.log(`Found ${activeOrPastTournaments.length} active or past tournaments`);
     
-    if (!latestTournament || !latestTournament.id) {
+    let selectedTournament: Tournament | null = null;
+    
+    if (activeOrPastTournaments.length > 0) {
+      // Sort active or past tournaments by startDate (most recent first)
+      const sortedActiveTournaments = [...activeOrPastTournaments].sort((a, b) => 
+        new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+      );
+      
+      // Get the most recent tournament that has already started
+      selectedTournament = sortedActiveTournaments[0];
+      console.log('Selected active tournament:', JSON.stringify(selectedTournament));
+    } else {
+      // No active tournaments found, look for upcoming tournaments as fallback
+      const upcomingTournaments = tournaments.filter(tournament => 
+        new Date(tournament.startDate) > currentDate
+      );
+      
+      if (upcomingTournaments.length > 0) {
+        // Sort upcoming tournaments by startDate (soonest first)
+        const sortedUpcomingTournaments = [...upcomingTournaments].sort((a, b) => 
+          new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+        );
+        
+        // Get the soonest upcoming tournament
+        selectedTournament = sortedUpcomingTournaments[0];
+        console.log('Selected upcoming tournament (fallback):', JSON.stringify(selectedTournament));
+      }
+    }
+    
+    if (!selectedTournament || !selectedTournament.id) {
       return { tournament: null, standings: null };
     }
     
-    // Get standings for this tournament
-    const standings = await this.getStandings(latestTournament.id);
+    // Get standings for the selected tournament
+    const standings = await this.getStandings(selectedTournament.id);
     
     // If we received valid standings data
     if (standings && standings.stages && standings.stages.length > 0) {
       return {
-        tournament: latestTournament,
+        tournament: selectedTournament,
         standings
       };
     } else {
-      console.log(`No valid standings data found for tournament ${latestTournament.id}`);
+      console.log(`No valid standings data found for tournament ${selectedTournament.id}`);
       return { 
-        tournament: latestTournament, 
+        tournament: selectedTournament, 
         standings: null 
       };
     }
